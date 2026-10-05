@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Многоуровневый список</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h3>Генератор многоуровневых списков</h3>
+<input id="txt" placeholder="Текст пункта" autocomplete="off">
+<button onclick="add()">Добавить</button>
+
+<ul id="list"></ul>
+
+<h4>HTML-код:</h4>
+<textarea id="code" readonly></textarea>
+
+<h4>Предпросмотр:</h4>
+<div id="preview"></div>
+
+<script>
+let items = JSON.parse(localStorage.getItem('list') || '[]');
+const $ = id => document.getElementById(id);
+
+function add() {
+  const t = $('txt').value.trim();
+  if (!t) return;
+  const last = items[items.length - 1];
+  items.push({ text: t, level: last ? last.level : 0 });
+  $('txt').value = '';
+  render();
+}
+
+function chg(i, d) {
+  const nl = items[i].level + d;
+  if (nl >= 0 && nl <= 3) items[i].level = nl;
+  render();
+}
+
+function del(i) { items.splice(i, 1); render(); }
+
+function html() {
+  let out = '', stack = [];
+  items.forEach(it => {
+    while (stack.length > it.level) { out += '</li>\n</ul>\n'; stack.pop(); }
+    while (stack.length < it.level) { out += '<ul>\n'; stack.push(1); }
+    if (out && !out.endsWith('<ul>\n')) out += '</li>\n';
+    out += '<li>' + it.text.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  });
+  while (stack.length) { out += '</li>\n</ul>\n'; stack.pop(); }
+  return out.trim();
+}
+function render() {
+  var ul = document.getElementById('list');
+  ul.innerHTML = '';
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var li = document.createElement('li');
+    li.className = 'lvl' + it.level;
+
+    var b1 = document.createElement('button');
+    b1.textContent = '<';
+    b1.disabled = (it.level === 0);
+    b1.onclick = (function(idx){ return function(){ chg(idx, -1); }; })(i);
+
+    var b2 = document.createElement('button');
+    b2.textContent = '>';
+    b2.disabled = (it.level === 3);
+    b2.onclick = (function(idx){ return function(){ chg(idx, 1); }; })(i);
+
+    var inp = document.createElement('input');
+    inp.value = it.text;
+    inp.oninput = (function(idx){ return function(){ items[idx].text = this.value; save(); out(); }; })(i);
+
+    var b3 = document.createElement('button');
+    b3.textContent = 'x';
+    b3.onclick = (function(idx){ return function(){ del(idx); }; })(i);
+
+    li.appendChild(b1);
+    li.appendChild(b2);
+    li.appendChild(inp);
+    li.appendChild(b3);
+    ul.appendChild(li);
+  }
+  save();
+  out();
+}
+function save() { localStorage.setItem('list', JSON.stringify(items)); }
+
+function out() {
+  const h = html();
+  $('code').value = h;
+  $('preview').innerHTML = h;
+}
+
+$('txt').addEventListener('keypress', e => e.key === 'Enter' && add());
+render();
+</script>
+
+</body>
+</html>
